@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Anime Wallpaper</title>
+  <style>
+    html,body {height:100%;margin:0;background:#000;overflow:hidden;}
+    #bg {
+      position:fixed; inset:0;
+      width:100%; height:100%;
+      object-fit:contain; /* no cropping */
+      background:#000;
+    }
+    #ui {
+      position:fixed; right:16px; bottom:16px;
+      display:flex; gap:8px; align-items:center;
+      background:rgba(0,0,0,.35); padding:8px 10px; border-radius:12px;
+      font:14px system-ui,Segoe UI,Roboto,Arial;
+      color:#fff; user-select:none
+    }
+    #ui button {
+      border:0; padding:6px 10px; border-radius:10px; cursor:pointer;
+      background:rgba(255,255,255,.15)
+    }
+    #ui a {color:#fff; text-decoration:underline}
+  </style>
+</head>
+<body>
+  <img id="bg" alt="wallpaper" />
+  <div id="ui">
+    <button id="btnRefresh" title="R">Refresh</button>
+    <a id="btnOpen" href="#" title="F">Get wallpaper</a>
+    <span id="status" style="opacity:.8"></span>
+  </div>
+
+  <script>
+    const API = 'https://nekos.best/api/v2/neko?amount=1';
+    const EVERY_MS = 12 * 60 * 60 * 1000; // 12 hours
+    const img = document.getElementById('bg');
+    const statusEl = document.getElementById('status');
+    const btnRefresh = document.getElementById('btnRefresh');
+    const btnOpen = document.getElementById('btnOpen');
+
+    let currentImageUrl = null;
+    let timer;
+
+    async function fetchImage() {
+      status('Loading…');
+      try {
+        const r = await fetch(API, {cache:'no-store'});
+        const j = await r.json();
+        const url = j.results?.[0]?.url || j.results?.[0]?.image || j.url || j.image;
+        if (!url) throw new Error('No image URL from API');
+        currentImageUrl = url;
+        // avoid stale caching if provider reuses URLs
+        img.src = currentImageUrl + (currentImageUrl.includes('?') ? '&' : '?') + 'nocache=' + Date.now();
+        btnOpen.href = currentImageUrl;
+        status('Updated');
+      } catch (e) {
+        console.error(e);
+        status('Failed to load, retrying in 30s…');
+        clearTimeout(timer);
+        timer = setTimeout(() => refreshNow(), 30_000);
+      }
+    }
+
+    function status(t){ statusEl.textContent = t; setTimeout(()=>statusEl.textContent='', 2000); }
+
+    function refreshNow(){
+      clearInterval(timer);
+      fetchImage();
+      timer = setInterval(fetchImage, EVERY_MS);
+    }
+
+    function openCurrent(){
+      if (currentImageUrl) {
+        // Lively's webview opens links externally; window.open works too.
+        window.open(currentImageUrl, '_blank');
+      } else {
+        status('No image yet');
+      }
+    }
+
+    // UI + hotkeys
+    btnRefresh.onclick = refreshNow;
+    btnOpen.onclick = (e)=>{ e.preventDefault(); openCurrent(); };
+    window.addEventListener('keydown', (e)=>{
+      if (e.repeat) return;
+      if (e.key.toLowerCase()==='r') refreshNow();
+      if (e.key.toLowerCase()==='f') openCurrent();
+    });
+
+    // Lively property hooks (triggered by CLI setprop)
+    // https://github.com/rocksdanister/lively/wiki/Web-Guide-IV-:-Interaction
+    function livelyPropertyListener(name, val){
+      if (name === 'refresh' && val === true) refreshNow();
+      if (name === 'getImage' && val === true) openCurrent();
+    }
+    // Start
+    refreshNow();
+  </script>
+</body>
+</html>
