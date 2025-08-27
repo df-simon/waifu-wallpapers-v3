@@ -1,0 +1,15 @@
+{
+  "title": "Anime Puller",
+  "properties": {
+    "refresh": {
+      "text": "Refresh Now",
+      "type": "button",
+      "value": false
+    },
+    "getImage": {
+      "text": "Open Image in Browser",
+      "type": "button",
+      "value": false
+    }
+  }
+}
